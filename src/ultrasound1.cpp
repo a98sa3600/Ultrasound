@@ -39,97 +39,60 @@ using std::stringstream;
 
 int main(){
 	//Open SerialPort
-	//Serial 1
-    SerialPort serialPort1("/dev/ttyUSB0", BaudRate::B_9600, NumDataBits::EIGHT, Parity::NONE, NumStopBits::ONE);
+	//Serial 0
+    SerialPort serialPort0("/dev/ttyUSB0", BaudRate::B_9600, NumDataBits::EIGHT, Parity::NONE, NumStopBits::ONE);
+    serialPort0.SetTimeout(-1); 
+	serialPort0.Open();
+    //Serial 1
+    SerialPort serialPort1("/dev/ttyUSB1", BaudRate::B_9600, NumDataBits::EIGHT, Parity::NONE, NumStopBits::ONE);
     serialPort1.SetTimeout(-1); 
 	serialPort1.Open();
     //Serial 2
-    SerialPort serialPort2("/dev/ttyUSB1", BaudRate::B_9600, NumDataBits::EIGHT, Parity::NONE, NumStopBits::ONE);
+    SerialPort serialPort2("/dev/ttyUSB2", BaudRate::B_9600, NumDataBits::EIGHT, Parity::NONE, NumStopBits::ONE);
     serialPort2.SetTimeout(-1); 
 	serialPort2.Open();
     //Serial 3
-    SerialPort serialPort3("/dev/ttyUSB2", BaudRate::B_9600, NumDataBits::EIGHT, Parity::NONE, NumStopBits::ONE);
+    SerialPort serialPort3("/dev/ttyUSB3", BaudRate::B_9600, NumDataBits::EIGHT, Parity::NONE, NumStopBits::ONE);
     serialPort3.SetTimeout(-1); 
 	serialPort3.Open();
     //Serial 4
-    SerialPort serialPort4("/dev/ttyUSB3", BaudRate::B_9600, NumDataBits::EIGHT, Parity::NONE, NumStopBits::ONE);
+    SerialPort serialPort4("/dev/ttyUSB4", BaudRate::B_9600, NumDataBits::EIGHT, Parity::NONE, NumStopBits::ONE);
     serialPort4.SetTimeout(-1); 
 	serialPort4.Open();
     //Serial 5
-    SerialPort serialPort5("/dev/ttyUSB4", BaudRate::B_9600, NumDataBits::EIGHT, Parity::NONE, NumStopBits::ONE);
+    SerialPort serialPort5("/dev/ttyUSB5", BaudRate::B_9600, NumDataBits::EIGHT, Parity::NONE, NumStopBits::ONE);
     serialPort5.SetTimeout(-1); 
 	serialPort5.Open();
-    //Serial 6
-    SerialPort serialPort6("/dev/ttyUSB5", BaudRate::B_9600, NumDataBits::EIGHT, Parity::NONE, NumStopBits::ONE);
-    serialPort6.SetTimeout(-1); 
-	serialPort6.Open();
 	cout <<  "Open serial port for ultrasound Serial"  << endl;
 
+	SerialPort serialPort[ultrasound_number] = {serialPort0,serialPort1,serialPort2,serialPort3,serialPort4,serialPort5};
 
-		//create pthread_t ;
-		pthread_t ultrasound_reader1,ultrasound_reader2,ultrasound_reader3,ultrasound_reader4,ultrasound_reader5,ultrasound_reader6;
-		if (pthread_create(&ultrasound_reader1, NULL, calculateInfo, (void *)&serialPort1) !=0) {
+
+	//create pthread_t ;
+	pthread_t ultrasound_reader[ultrasound_number];
+	for(int i;i<ultrasound_number;i++){
+		if (pthread_create(&ultrasound_reader[i], NULL, calculateInfo, (void *)&serialPort[i]) !=0) {
 		perror("could not create thread for ultrasound_reader");
 		return -1;
 		}
-		if (pthread_create(&ultrasound_reader2, NULL, calculateInfo, (void *)&serialPort2) !=0) {
-		perror("could not create thread for ultrasound_reader");
-		return -1;
-		}
-		if (pthread_create(&ultrasound_reader3, NULL, calculateInfo, (void *)&serialPort3) !=0) {
-		perror("could not create thread for ultrasound_reader");
-		return -1;
-		}
-		if (pthread_create(&ultrasound_reader4, NULL, calculateInfo, (void *)&serialPort4) !=0) {
-		perror("could not create thread for ultrasound_reader");
-		return -1;
-		}
-		if (pthread_create(&ultrasound_reader5, NULL, calculateInfo, (void *)&serialPort5) !=0) {
-		perror("could not create thread for ultrasound_reader");
-		return -1;
-		}
-		if (pthread_create(&ultrasound_reader6, NULL, calculateInfo, (void *)&serialPort6) !=0) {
-		perror("could not create thread for ultrasound_reader");
-		return -1;
-		}
+	}
 		
-		//End pthread and Save callBack_value
-		void *Distance[ultrasound_number];
-		if (pthread_join(ultrasound_reader1, &Distance[0]) != 0) {
-			perror("Error: pthread_join");
-			return -1;
-		} 
+	//End pthread and Save callBack_value
+	void *Distance[ultrasound_number];
+	for(int i;i<ultrasound_number;i++){
+		if (pthread_join(ultrasound_reader[i], &Distance[i]) !=0) {
+		perror("could not create thread for ultrasound_reader");
+		return -1;
+		}
+	}	
 
-		if (pthread_join(ultrasound_reader2, &Distance[1]) != 0) {
-			perror("Error: pthread_join");
-			return -1;
-		} 
-		if (pthread_join(ultrasound_reader3, &Distance[2]) != 0) {
-			perror("Error: pthread_join");
-			return -1;
-		} 
-		if (pthread_join(ultrasound_reader4, &Distance[3]) != 0) {
-			perror("Error: pthread_join");
-			return -1;
-		} 
-		if (pthread_join(ultrasound_reader5, &Distance[4]) != 0) {
-			perror("Error: pthread_join");
-			return -1;
-		} 
-		if (pthread_join(ultrasound_reader6, &Distance[5]) != 0) {
-			perror("Error: pthread_join");
-			return -1;
-		} 
-
+	for(int i=0; i < ultrasound_number; i++){
 		float result[ultrasound_number];
-		for(int i=0; i < ultrasound_number; i++){
-			result[i]=*(float *)Distance[i];
-			if(result[i]>ultrasound_limit){
-			cout << "Distance=" << (float *)Distance << "cm" <<endl;
-			}else{cout << "Below the lower limit"<<endl;}
-		} 
-		
-
+		result[i]=*(float *)Distance[i];
+		if(result[i]>ultrasound_limit){
+		cout << "Distance=" << (float *)Distance << "cm" <<endl;
+		}else{cout << "Below the lower limit"<<endl;}
+	} 
 	
 	usleep(100*1000);
 	pthread_exit(NULL);
