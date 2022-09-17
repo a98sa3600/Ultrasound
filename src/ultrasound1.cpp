@@ -15,10 +15,10 @@ using std::stringstream;
 
 
  void * calculateInfo(void *args){
+	int i; //for the following do-while function to use
 	string readData;
-	int i; //for do-while func to use
     unsigned char data[4]={0};
-    float *distance;
+    float *distance=new float;
 	SerialPort *serialPort = (SerialPort *) args;
 	serialPort->Read(readData); 
     do{
@@ -28,17 +28,20 @@ using std::stringstream;
     }while(readData[i]==0xff);
 
     if(data[0]==0xff){
-    int sum;
-    sum=(data[0]+data[1]+data[2])&0x00FF;
-        if(sum==data[3]){
-            *distance=((data[1]<<8)+data[2])/10;
+		int sum;
+		sum=(data[0]+data[1]+data[2])&0x00FF;
+		if(sum==data[3]){
+			*distance=((data[1]<<8)+data[2])/10;
+			return (void *)distance;
+		}else {
+			*distance =-1;
 			return (void *)distance;
 		}
 	}
 }
 
 int main(){
-	//Open SerialPort
+	//Open SerialPort 
 	//Serial 0
     SerialPort serialPort0("/dev/ttyUSB0", BaudRate::B_9600, NumDataBits::EIGHT, Parity::NONE, NumStopBits::ONE);
     serialPort0.SetTimeout(-1); 
@@ -65,8 +68,7 @@ int main(){
 	serialPort5.Open();
 	cout <<  "Open serial port for ultrasound Serial"  << endl;
 
-	SerialPort serialPort[ultrasound_number] = {serialPort0,serialPort1,serialPort2,serialPort3,serialPort4,serialPort5};
-
+	SerialPort serialPort[ultrasound_number] = {serialPort0, serialPort1,serialPort2,serialPort3,serialPort4,serialPort5};
 
 	//create pthread_t ;
 	pthread_t ultrasound_reader[ultrasound_number];
@@ -90,12 +92,14 @@ int main(){
 		float result[ultrasound_number];
 		result[i]=*(float *)Distance[i];
 		if(result[i]>ultrasound_limit){
-		cout << "Distance=" << (float *)Distance << "cm" <<endl;
+		cout << "distance" << i << "=" << result[i] << "cm" <<endl;
 		}else{cout << "Below the lower limit"<<endl;}
-	} 
-	
+		if(result[i]=-1){
+			cout << "ERROR" << endl;
+		}
+	}
 	usleep(100*1000);
-	pthread_exit(NULL);
+	
     
     return 0;
 }
