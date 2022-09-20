@@ -13,8 +13,7 @@ using std::stringstream;
 #define ultrasound_number 6
 #define ultrasound_limit 3
 
-
- void * calculateInfo(void *args){
+void * calculateInfo(void *args){
 	int i; //for the following do-while function to use
 	string readData;
     unsigned char data[4]={0};
@@ -70,6 +69,8 @@ int main(){
 
 	SerialPort serialPort[ultrasound_number] = {serialPort0, serialPort1,serialPort2,serialPort3,serialPort4,serialPort5};
 
+	while(1){
+	
 	//create pthread_t ;
 	pthread_t ultrasound_reader[ultrasound_number];
 	for(int i;i<ultrasound_number;i++){
@@ -83,7 +84,7 @@ int main(){
 	void *Distance[ultrasound_number];
 	for(int i;i<ultrasound_number;i++){
 		if (pthread_join(ultrasound_reader[i], &Distance[i]) !=0) {
-		perror("could not create thread for ultrasound_reader");
+		perror("pthread_join error for ultrasound_reader");
 		return -1;
 		}
 	}	
@@ -93,12 +94,17 @@ int main(){
 		result[i]=*(float *)Distance[i];
 		if(result[i]>ultrasound_limit){
 		cout << "distance" << i << "=" << result[i] << "cm" <<endl;
-		}else{cout << "Below the lower limit"<<endl;}
-		if(result[i]=-1){
+		}
+		else if(result[i]==-1){
+			cout << "Below the lower limit"<<endl;
+		}
+		else{
 			cout << "ERROR" << endl;
 		}
 	}
 	usleep(100*1000);
+
+	}
 	
     
     return 0;
