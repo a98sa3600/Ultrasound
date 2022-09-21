@@ -1,3 +1,5 @@
+//g++ -o ultrasound1 ultrasound1.cpp -lCppLinuxSerial -pthread
+
 #include <CppLinuxSerial/SerialPort.hpp>
 #include<iostream>
 #include<string>
@@ -17,8 +19,9 @@ void * calculateInfo(void *args){
 	int i; //for the following do-while function to use
 	string readData;
     unsigned char data[4]={0};
-    float *distance=new float;
+    float * distance;
 	SerialPort *serialPort = (SerialPort *) args;
+	serialPort->Open();
 	serialPort->Read(readData); 
     do{
         for(i=0;i<4;i++){
@@ -30,83 +33,57 @@ void * calculateInfo(void *args){
 		int sum;
 		sum=(data[0]+data[1]+data[2])&0x00FF;
 		if(sum==data[3]){
-			*distance=((data[1]<<8)+data[2])/10;
-			return (void *)distance;
-		}else {
-			*distance =-1;
-			return (void *)distance;
-		}
+				*distance=((data[1]<<8)+data[2])/10;
+		}else { *distance =-1; }
+		return (void *)distance;
 	}
+	
 }
 
 int main(){
-	//Open SerialPort 
-	//Serial 0
+	//Define SerialPort 
     SerialPort serialPort0("/dev/ttyUSB0", BaudRate::B_9600, NumDataBits::EIGHT, Parity::NONE, NumStopBits::ONE);
-    serialPort0.SetTimeout(-1); 
-	serialPort0.Open();
-    //Serial 1
     SerialPort serialPort1("/dev/ttyUSB1", BaudRate::B_9600, NumDataBits::EIGHT, Parity::NONE, NumStopBits::ONE);
-    serialPort1.SetTimeout(-1); 
-	serialPort1.Open();
-    //Serial 2
     SerialPort serialPort2("/dev/ttyUSB2", BaudRate::B_9600, NumDataBits::EIGHT, Parity::NONE, NumStopBits::ONE);
-    serialPort2.SetTimeout(-1); 
-	serialPort2.Open();
-    //Serial 3
     SerialPort serialPort3("/dev/ttyUSB3", BaudRate::B_9600, NumDataBits::EIGHT, Parity::NONE, NumStopBits::ONE);
-    serialPort3.SetTimeout(-1); 
-	serialPort3.Open();
-    //Serial 4
     SerialPort serialPort4("/dev/ttyUSB4", BaudRate::B_9600, NumDataBits::EIGHT, Parity::NONE, NumStopBits::ONE);
-    serialPort4.SetTimeout(-1); 
-	serialPort4.Open();
-    //Serial 5
     SerialPort serialPort5("/dev/ttyUSB5", BaudRate::B_9600, NumDataBits::EIGHT, Parity::NONE, NumStopBits::ONE);
-    serialPort5.SetTimeout(-1); 
-	serialPort5.Open();
-	cout <<  "Open serial port for ultrasound Serial"  << endl;
+	cout <<  " serialPort for ultrasound Serial"  << endl;
 
 	SerialPort serialPort[ultrasound_number] = {serialPort0, serialPort1,serialPort2,serialPort3,serialPort4,serialPort5};
 
 	while(1){
-	
-	//create pthread_t ;
-	pthread_t ultrasound_reader[ultrasound_number];
-	for(int i;i<ultrasound_number;i++){
-		if (pthread_create(&ultrasound_reader[i], NULL, calculateInfo, (void *)&serialPort[i]) !=0) {
-		perror("could not create thread for ultrasound_reader");
-		return -1;
+		//create pthread_t ;
+		pthread_t ultrasound_reader[ultrasound_number];
+		for(int i=0;i<ultrasound_number;i++){
+			if (pthread_create(&ultrasound_reader[i], NULL, calculateInfo, (void *) &serialPort[i]) !=0) {
+			perror("could not create thread for ultrasound_reader");
+			return -1;
+			}
 		}
-	}
 		
-	//End pthread and Save callBack_value
-	void *Distance[ultrasound_number];
-	for(int i;i<ultrasound_number;i++){
-		if (pthread_join(ultrasound_reader[i], &Distance[i]) !=0) {
-		perror("pthread_join error for ultrasound_reader");
-		return -1;
-		}
-	}	
+		//End pthread and Save callBack_value
+		void * Distance[ultrasound_number];	
+		for(int i=0;i<ultrasound_number;i++){
+			if (pthread_join(ultrasound_reader[i],&Distance[i]) !=0) {
+			perror("pthread_join error for ultrasound_reader");
+			return -1;
+			}
+		}	
 
-	for(int i=0; i < ultrasound_number; i++){
-		float result[ultrasound_number];
-		result[i]=*(float *)Distance[i];
-		if(result[i]>ultrasound_limit){
-		cout << "distance" << i << "=" << result[i] << "cm" <<endl;
-		}
-		else if(result[i]==-1){
-			cout << "Below the lower limit"<<endl;
-		}
-		else{
-			cout << "ERROR" << endl;
+		for(int i=0; i < ultrasound_number; i++){
+			float result[i]={0};
+			result[i]= *(float *)Distance[i];
+			if(result[i]>ultrasound_limit){
+				cout << "Distance" << i << "=" << result[i] << "cm" <<endl;
+			}
+			else if(result[i] == -1 ){
+				cout << "ERROR"<<endl;
+			}
+			else{
+				cout << "Over Range" << endl;
+			}
 		}
 	}
-	usleep(100*1000);
-
-	}
-	
-    
     return 0;
 }
-
