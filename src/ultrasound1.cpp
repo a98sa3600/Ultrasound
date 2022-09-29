@@ -15,12 +15,15 @@ using std::stringstream;
 #define ultrasound_number 6
 #define ultrasound_limit 3
 
-void * calculateInfo(void *args){
+pthread_mutex_t mutex ;
+
+void * getInfo(void *args){
+	pthread_mutex_lock(&mutex);
 	int i; //for the following do-while function to use
-	string readData;
+	string readData={0};
     unsigned char data[4]={0};
     float * distance;
-	SerialPort *serialPort = (SerialPort *) args;
+	SerialPort * serialPort = (SerialPort *) args;
 	serialPort->Open();
 	serialPort->Read(readData); 
     do{
@@ -35,9 +38,10 @@ void * calculateInfo(void *args){
 		if(sum==data[3]){
 				*distance=((data[1]<<8)+data[2])/10;
 		}else { *distance =-1; }
-		return (void *)distance;
 	}
-	
+	pthread_mutex_unlock(&mutex);
+	return (void *)distance;
+	usleep(100*1000);
 }
 
 int main(){
@@ -52,11 +56,13 @@ int main(){
 
 	SerialPort serialPort[ultrasound_number] = {serialPort0, serialPort1,serialPort2,serialPort3,serialPort4,serialPort5};
 
+
 	while(1){
 		//create pthread_t ;
 		pthread_t ultrasound_reader[ultrasound_number];
+
 		for(int i=0;i<ultrasound_number;i++){
-			if (pthread_create(&ultrasound_reader[i], NULL, calculateInfo, (void *) &serialPort[i]) !=0) {
+			if (pthread_create(&ultrasound_reader[i], NULL, getInfo , (void *) (serialPort+i) ) !=0) {
 			perror("could not create thread for ultrasound_reader");
 			return -1;
 			}
@@ -65,15 +71,17 @@ int main(){
 		//End pthread and Save callBack_value
 		void * Distance[ultrasound_number];	
 		for(int i=0;i<ultrasound_number;i++){
-			if (pthread_join(ultrasound_reader[i],&Distance[i]) !=0) {
+			if (pthread_join(ultrasound_reader[i],(Distance+i)) !=0) {
 			perror("pthread_join error for ultrasound_reader");
 			return -1;
 			}
 		}	
 
+		string serialState[ultrasound_number]={"Front","Front_Right","Front_Left","Back","Back_Right","Back_Left"};
 		for(int i=0; i < ultrasound_number; i++){
 			float result[i]={0};
 			result[i]= *(float *)Distance[i];
+			cout << serialState[i] << "\t" ;
 			if(result[i]>ultrasound_limit){
 				cout << "Distance" << i << "=" << result[i] << "cm" <<endl;
 			}
@@ -84,6 +92,10 @@ int main(){
 				cout << "Over Range" << endl;
 			}
 		}
+		
 	}
+
+	
+	pthread_mutex_destroy(&mutex);
     return 0;
 }
